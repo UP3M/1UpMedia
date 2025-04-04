@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Visualizer AI</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        h1, h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+            margin-bottom: 20px;
+        }
+
+        .input-section, .results-section {
+            background-color: #fff;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="file"],
+        textarea {
+            width: 95%; /* Allow some padding space */
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        textarea {
+            resize: vertical; /* Allow vertical resize */
+            min-height: 100px;
+        }
+
+        input[type="file"] {
+            padding: 5px; /* File inputs look different */
+        }
+
+        .reference-images {
+            display: flex;
+            gap: 20px; /* Space between image upload groups */
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            margin-top: 15px;
+        }
+
+        .image-upload {
+            flex: 1; /* Distribute space */
+            min-width: 200px; /* Minimum width before wrapping */
+            border: 1px dashed #ccc;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .preview-img {
+            max-width: 100%;
+            height: auto;
+            max-height: 150px; /* Limit preview height */
+            margin-top: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+
+
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            text-align: center;
+            text-decoration: none;
+            margin-right: 10px;
+            margin-top: 5px; /* Add some top margin */
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-secondary {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #27ae60;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            color: #555;
+            border: 1px solid #ccc;
+        }
+        .btn-outline:hover {
+            background-color: #eee;
+            border-color: #bbb;
+        }
+
+
+        /* Results Section Styling */
+        #prompt-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .prompt-item {
+            background-color: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            cursor: pointer; /* Indicate clickable prompts */
+            transition: background-color 0.2s ease;
+        }
+
+        .prompt-item:hover {
+            background-color: #dde4e6;
+        }
+
+        .prompt-item.selected { /* Style for the selected prompt */
+           background-color: #d6e0e3;
+           border-left: 5px solid #3498db;
+           padding-left: 10px; /* Adjust padding to account for border */
+           cursor: default; /* No pointer needed once selected */
+        }
+
+        .prompt-content {
+            margin-bottom: 10px;
+        }
+        .prompt-text {
+            background-color: #fdfdfd;
+            border: 1px dashed #ddd;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 8px;
+            font-family: monospace;
+            white-space: pre-wrap; /* Wrap long prompts */
+            word-wrap: break-word;
+        }
+
+
+        .prompt-actions,
+        .image-generation-area,
+        .image-actions,
+        .angle-generation-area,
+        .angle-actions /* Added for download button */ {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #bdc3c7; /* Separator */
+        }
+        /* Remove top border for angle actions if it looks odd */
+        .angle-actions {
+            border-top: none;
+            padding-top: 5px; /* Less padding */
+            margin-top: 5px;
+            text-align: center;
+        }
+
+
+        /* Image Layouts */
+        .generated-images,
+        .generated-angles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px; /* Space between images */
+            margin-top: 10px;
+        }
+
+        .image-container {
+            border: 1px solid #ccc;
+            padding: 5px;
+            border-radius: 4px;
+            background-color: #fff;
+            flex-basis: calc(25% - 15px); /* Aim for 4 images per row, accounting for gap */
+            box-sizing: border-box; /* Include padding and border in width */
+            position: relative; /* For potential overlay actions if needed */
+        }
+        .image-container img {
+            max-width: 100%;
+            height: auto;
+            display: block; /* Remove extra space below image */
+            cursor: pointer; /* Indicate clickable images */
+            border-radius: 3px;
+        }
+
+        /* Style for selected image (initial 4 or angle) */
+        .image-container.selected-image {
+            border: 2px solid #2ecc71;
+            box-shadow: 0 0 8px rgba(46, 204, 113, 0.5);
+        }
+
+        /* --- MODIFICATION 1: Make angle images same size --- */
+        .generated-angles .image-container {
+             /* flex-basis: calc(20% - 15px); */ /* Original: Aim for 5 images per row */
+             flex-basis: calc(25% - 15px); /* NEW: Aim for 4 images per row, same as initial */
+        }
+        .generated-angles .image-container img {
+            /* Angle images ARE clickable now to show download */
+             cursor: pointer;
+        }
+
+
+        /* Loading Indicators */
+        .loading {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #eaf5ff;
+            border: 1px solid #b3d7ff;
+            color: #3498db;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .loading-images, .loading-angles {
+            text-align: center;
+            padding: 20px;
+            color: #555;
+        }
+
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .reference-images {
+                flex-direction: column; /* Stack reference uploads vertically */
+            }
+            .generated-images .image-container {
+                flex-basis: calc(50% - 15px); /* 2 images per row */
+            }
+             /* --- MODIFICATION 1: Responsive size adjust --- */
+             .generated-angles .image-container {
+                /* flex-basis: calc(33.33% - 15px); */ /* Original: 3 images per row */
+                flex-basis: calc(50% - 15px); /* NEW: 2 images per row, same as initial */
+            }
+        }
+
+        @media (max-width: 480px) {
+            /* Both layouts use 1 image per row */
+            .generated-images .image-container,
+            .generated-angles .image-container {
+                flex-basis: calc(100% - 15px); /* 1 image per row */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Story Visualizer AI</h1>
+
+    <form id="story-input-form" class="input-section">
+        <h2>1. Input Your Story</h2>
+        <div class="form-group">
+            <label for="story-text">Paste Story Text:</label>
+            <textarea id="story-text" name="story-text" rows="10" placeholder="Paste your full story here..."></textarea>
+        </div>
+        <div class="form-group">
+            <label for="story-file">Or Upload Document:</label>
+            <input type="file" id="story-file" name="story-file" accept=".txt,.doc,.docx,.pdf">
+        </div>
+
+        <div class="form-group">
+            <label for="num-frames">Number of Key Frames/Images to Generate:</label>
+            <input type="number" id="num-frames" name="num-frames" min="1" value="5" required>
+        </div>
+
+        <h2>2. Provide Visual References (Optional)</h2>
+        <div class="reference-images">
+            <div class="form-group image-upload">
+                <label for="style-ref">Style Reference:</label>
+                <input type="file" id="style-ref" name="style-ref" accept="image/*">
+                <img id="style-preview" class="preview-img" src="#" alt="Style Preview" style="display: none;">
+            </div>
+            <div class="form-group image-upload">
+                <label for="char-ref">Character Reference:</label>
+                <input type="file" id="char-ref" name="char-ref" accept="image/*">
+                 <img id="char-preview" class="preview-img" src="#" alt="Character Preview" style="display: none;">
+            </div>
+            <div class="form-group image-upload">
+                <label for="scene-ref">Scene Reference:</label>
+                <input type="file" id="scene-ref" name="scene-ref" accept="image/*">
+                 <img id="scene-preview" class="preview-img" src="#" alt="Scene Preview" style="display: none;">
+            </div>
+        </div>
+
+        <button type="submit" id="submit-story" class="btn btn-primary">Extract Key Events & Prompts</button>
+        <div id="loading-indicator" class="loading" style="display: none;">Processing story...</div>
+    </form>
+
+    <hr>
+
+    <div id="results-section" class="results-section" style="display: none;">
+        <h2>3. Extracted Key Events & Prompts</h2>
+        <p>Click on a prompt to generate initial images.</p>
+        <ul id="prompt-list">
+            <!-- Prompt items will be dynamically added here -->
+            <!-- Example structure of a list item (generated by JS):
+            <li class="prompt-item" data-prompt-id="1">
+                <div class="prompt-content">
+                    <strong>Key Event 1:</strong> [Extracted Event Description]
+                    <p class="prompt-text" data-original-prompt="[Prompt Text]"><strong>Prompt:</strong> [Generated Image Prompt Text]</p>
+                </div>
+                <div class="prompt-actions" style="display: none;">
+                    <button class="btn btn-secondary submit-prompt-btn">Generate Images</button>
+                    <button class="btn btn-outline regen-prompt-btn">Regen Prompt</button>
+                </div>
+                <div class="image-generation-area" style="display: none;">
+                    <div class="loading-images" style="display: none;">Generating images... <progress></progress></div>
+                    <div class="generated-images">
+                         <!-- 4 Images will be added here -->
+                         <!-- Example structure of one image:
+                         <div class="image-container" data-image-index="0" data-prompt-id="p1">
+                            <img src="placeholder.jpg" alt="Generated Image 1 for Prompt p1">
+                            <div class="image-actions" style="display: none;">
+                                <button class="btn btn-secondary submit-angles-btn">Generate Angles</button>
+                                <button class="btn btn-outline regen-image-btn">Regen Image</button>
+                            </div>
+                            <div class="angle-generation-area" style="display: none;">
+                                <div class="loading-angles" style="display: none;">Generating angles... <progress></progress></div>
+                                <div class="generated-angles">
+                                    <!-- 5 Angle Images will be added here -->
+                                    <!-- Example structure of one angle image:
+                                     <div class="image-container angle-image" data-prompt-id="p1" data-base-image-index="0" data-angle-index="0" data-image-url="angle_placeholder.jpg">
+                                         <img src="angle_placeholder.jpg" alt="Angle 1 for Image 1 (Prompt p1)" style="cursor: pointer;">
+                                         <div class="angle-actions" style="display: none;">
+                                             <button class="btn btn-secondary download-angle-btn">Download</button>
+                                         </div>
+                                    </div>
+                                    -->
+                                <!-- </div>
+                            </div>
+                         </div>
+                         -->
+                    <!-- </div>
+                </div>
+            </li>
+             -->
+        </ul>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const storyForm = document.getElementById('story-input-form');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const resultsSection = document.getElementById('results-section');
+        const promptList = document.getElementById('prompt-list');
+
+        // --- Input Previews ---
+        function setupImagePreview(inputId, previewId) {
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+            if (input && preview) {
+                input.addEventListener('change', function(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            preview.src = e.target.result;
+                            preview.style.display = 'block';
+                        }
+                        reader.readAsDataURL(file);
+                    } else {
+                        preview.src = '#';
+                        preview.style.display = 'none';
+                    }
+                });
+            }
+        }
+        setupImagePreview('style-ref', 'style-preview');
+        setupImagePreview('char-ref', 'char-preview');
+        setupImagePreview('scene-ref', 'scene-preview');
+
+
+        // --- 1. Handle Initial Story Submission ---
+        storyForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            loadingIndicator.style.display = 'block';
+            resultsSection.style.display = 'none';
+            promptList.innerHTML = '';
+
+            const formData = new FormData(storyForm);
+            const numFrames = formData.get('num-frames');
+
+            console.log("Simulating story processing...");
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate delay
+
+            const generatedPrompts = [];
+            for (let i = 1; i <= numFrames; i++) {
+                generatedPrompts.push({
+                    id: `p${i}`,
+                    event: `This is the extracted key event number ${i} from the story. It might describe a character action or a scene change.`,
+                    prompt: `Image prompt for event ${i}: A [adjective] [subject] [action] in a [setting description], style of [style reference if provided], character like [character ref if provided].`
+                });
+            }
+            console.log("Generated Prompts:", generatedPrompts);
+
+            loadingIndicator.style.display = 'none';
+            renderPrompts(generatedPrompts);
+            resultsSection.style.display = 'block';
+        });
+
+
+        // --- 4. Render the List of Prompts ---
+        function renderPrompts(prompts) {
+            promptList.innerHTML = '';
+            prompts.forEach((pData, index) => {
+                const li = document.createElement('li');
+                li.classList.add('prompt-item');
+                li.dataset.promptId = pData.id;
+
+                li.innerHTML = `
+                    <div class="prompt-content">
+                        <strong>Key Event ${index + 1}:</strong> ${pData.event}
+                        <p class="prompt-text" data-original-prompt="${pData.prompt}"><strong>Prompt:</strong> ${pData.prompt}</p>
+                    </div>
+                    <div class="prompt-actions" style="display: none;">
+                        <button class="btn btn-secondary submit-prompt-btn">Generate Images</button>
+                        <button class="btn btn-outline regen-prompt-btn">Regen Prompt</button>
+                    </div>
+                    <div class="image-generation-area" style="display: none;">
+                        <div class="loading-images" style="display: none;">Generating images... <progress></progress></div>
+                        <div class="generated-images"></div>
+                    </div>
+                `;
+                promptList.appendChild(li);
+            });
+        }
+
+
+        // --- 5. Handle Clicking on a Prompt Item (to show actions) ---
+        promptList.addEventListener('click', (event) => {
+            const promptItem = event.target.closest('.prompt-item');
+            if (!promptItem) return;
+
+            // Ignore clicks on buttons or inside interactive areas
+            if (event.target.closest('button') ||
+                event.target.closest('.image-generation-area') ||
+                event.target.closest('.prompt-text')) { // Don't trigger select if clicking prompt text itself
+                 return;
+            }
+
+            const promptActions = promptItem.querySelector('.prompt-actions');
+            if (!promptActions) return; // Should always exist, but safety check
+
+            const wasSelected = promptItem.classList.contains('selected');
+
+            // Collapse all others first
+            document.querySelectorAll('.prompt-item.selected').forEach(item => {
+                if (item !== promptItem) {
+                    item.classList.remove('selected');
+                    item.querySelector('.prompt-actions').style.display = 'none';
+                    // item.querySelector('.image-generation-area').style.display = 'none'; // Optional: hide images too
+                }
+            });
+
+            // Toggle the clicked one
+            if (wasSelected) {
+                promptItem.classList.remove('selected');
+                promptActions.style.display = 'none';
+            } else {
+                promptItem.classList.add('selected');
+                promptActions.style.display = 'block';
+            }
+        });
+
+
+        // --- Handle Prompt Action Buttons (Regen Prompt / Generate Images) ---
+        promptList.addEventListener('click', async (event) => {
+            const target = event.target;
+            const promptItem = target.closest('.prompt-item');
+            if (!promptItem) return;
+
+            const promptId = promptItem.dataset.promptId;
+            const promptTextElement = promptItem.querySelector('.prompt-text');
+            const imageGenArea = promptItem.querySelector('.image-generation-area');
+            const imageLoadingIndicator = promptItem.querySelector('.loading-images');
+            const generatedImagesContainer = promptItem.querySelector('.generated-images');
+
+            // --- 5a. Handle "Regen Prompt" Button ---
+            if (target.classList.contains('regen-prompt-btn')) {
+                console.log(`Regenerating prompt for ${promptId}`);
+                promptTextElement.innerHTML = `<strong>Prompt:</strong> Regenerating prompt...`;
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                const newPrompt = `NEW Regenerated prompt for event ${promptId}: [variation focusing on different details or perspective]`;
+
+                promptTextElement.innerHTML = `<strong>Prompt:</strong> ${newPrompt}`;
+                promptTextElement.dataset.originalPrompt = newPrompt; // Update the stored prompt
+                 console.log(`New prompt for ${promptId}: ${newPrompt}`);
+            }
+
+            // --- 6. Handle "Generate Images" (Submit Prompt) Button ---
+            if (target.classList.contains('submit-prompt-btn')) {
+                console.log(`Submitting prompt for ${promptId}`);
+                imageGenArea.style.display = 'block';
+                imageLoadingIndicator.style.display = 'block';
+                generatedImagesContainer.innerHTML = ''; // Clear old images
+
+                // Ensure we use the latest prompt text
+                const currentPrompt = promptTextElement.dataset.originalPrompt || promptTextElement.textContent.replace('Prompt: ','').trim();
+
+                console.log(`Generating 4 images for prompt: "${currentPrompt}"`);
+                await new Promise(resolve => setTimeout(resolve, 2500));
+
+                // SIMULATE: Use different samples for different prompts if possible
+                // const imageBase = promptId === 'p1' ? 'sample' : (promptId === 'p2' ? 'sample2' : 'sample3');
+                const imageBase = "sample"
+                const imageUrls = [
+                    `${imageBase}1-2.png`, // Replace with actual URLs/placeholders
+                    `${imageBase}2.png`,
+                    `${imageBase}3.png`,
+                    `${imageBase}4.png`
+                ];
+                // Use placeholders if actual images aren't available
+                // const imageUrls = Array(4).fill('https://via.placeholder.com/300x200.png?text=Image');
+
+                imageLoadingIndicator.style.display = 'none';
+                renderGeneratedImages(generatedImagesContainer, imageUrls, promptId);
+            }
+        });
+
+
+        // --- Render the 4 Generated Images ---
+        function renderGeneratedImages(container, urls, promptId) {
+            container.innerHTML = '';
+            urls.forEach((url, index) => {
+                const imageDiv = document.createElement('div');
+                imageDiv.classList.add('image-container');
+                imageDiv.dataset.imageIndex = index;
+                imageDiv.dataset.promptId = promptId;
+
+                imageDiv.innerHTML = `
+                    <img src="${url}" alt="Generated Image ${index + 1} for Prompt ${promptId}" onerror="this.onerror=null;this.src='https://via.placeholder.com/300x200.png?text=Img+${index + 1}+Not+Found';"> <!-- Basic error handling -->
+                    <div class="image-actions" style="display: none;">
+                        <button class="btn btn-secondary submit-angles-btn">Generate Angles</button>
+                        <button class="btn btn-outline regen-image-btn">Regen Image</button>
+                    </div>
+                    <div class="angle-generation-area" style="display: none;">
+                        <div class="loading-angles" style="display: none;">Generating angles... <progress></progress></div>
+                        <div class="generated-angles"></div>
+                    </div>
+                `;
+                container.appendChild(imageDiv);
+            });
+        }
+
+
+        // --- 7. Handle Clicking on one of the 4 Generated Images (to show actions) ---
+        promptList.addEventListener('click', (event) => {
+            const imageContainer = event.target.closest('.image-container');
+
+            // **** MODIFICATION 3: Bug Fix Logic ****
+            // 1. Check if we clicked inside an image container AT ALL
+            if (!imageContainer) return;
+
+            // 2. Check if the clicked container is an ANGLE image container. If so, do nothing HERE.
+            //    The separate listener below will handle angle image clicks.
+            if (imageContainer.classList.contains('angle-image')) return;
+
+            // 3. Check if the click target was the IMAGE itself within the main container
+            const isImageClick = event.target.tagName === 'IMG' && event.target.closest('.image-container') === imageContainer;
+
+            // Only proceed if clicking the image directly, and NOT inside actions/angles areas below it
+            if (!isImageClick || event.target.closest('.image-actions') || event.target.closest('.angle-generation-area')) {
+                return;
+            }
+            // **** END Bug Fix Logic ****
+
+
+            const imageActions = imageContainer.querySelector('.image-actions');
+            if (!imageActions) return; // Should exist
+
+            const wasSelected = imageContainer.classList.contains('selected-image');
+
+            // Deselect other MAIN images within the same prompt group
+            imageContainer.parentElement.querySelectorAll('.image-container:not(.angle-image)').forEach(sibling => { // Added :not(.angle-image)
+                if(sibling !== imageContainer) {
+                    sibling.classList.remove('selected-image');
+                    const siblingActions = sibling.querySelector('.image-actions');
+                    if (siblingActions) siblingActions.style.display = 'none';
+                     // Optionally hide angles too
+                    // const siblingAngleArea = sibling.querySelector('.angle-generation-area');
+                    // if (siblingAngleArea) siblingAngleArea.style.display = 'none';
+                }
+            });
+
+            // Toggle display of buttons for the clicked image
+            if (wasSelected) {
+                 imageContainer.classList.remove('selected-image');
+                 imageActions.style.display = 'none';
+                 // Optional: If hiding actions, also hide the angle area if it exists
+                 // const angleGenArea = imageContainer.querySelector('.angle-generation-area');
+                 // if (angleGenArea) angleGenArea.style.display = 'none';
+            } else {
+                 imageContainer.classList.add('selected-image');
+                 imageActions.style.display = 'block';
+            }
+        });
+
+
+        // --- Handle Image Action Buttons (Regen Image / Generate Angles) ---
+        promptList.addEventListener('click', async (event) => {
+            const target = event.target;
+            const imageContainer = target.closest('.image-container:not(.angle-image)'); // Ensure it's not an angle container
+            if (!imageContainer) return;
+
+            const promptId = imageContainer.dataset.promptId;
+            const imageIndex = imageContainer.dataset.imageIndex;
+            const imageElement = imageContainer.querySelector('img');
+            const angleGenArea = imageContainer.querySelector('.angle-generation-area');
+            const angleLoadingIndicator = imageContainer.querySelector('.loading-angles');
+            const generatedAnglesContainer = imageContainer.querySelector('.generated-angles');
+
+            // --- 7a. Handle "Regen Image" Button ---
+            if (target.classList.contains('regen-image-btn')) {
+                console.log(`Regenerating image index ${imageIndex} for prompt ${promptId}`);
+                imageElement.style.opacity = '0.5'; // Indicate loading
+
+                // Fetch the original prompt text again
+                const promptItem = document.querySelector(`.prompt-item[data-prompt-id="${promptId}"]`);
+                const promptText = promptItem?.querySelector('.prompt-text')?.dataset.originalPrompt || `Fallback Prompt for ${promptId}`;
+                console.log(`Using prompt: "${promptText}" for regeneration`);
+
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                // SIMULATE: Provide a slightly different image URL or same one with cache buster
+                const newImageUrl = `${imageElement.src.split('?')[0]}?regen=${Date.now()}`; // Cache buster
+
+                // Update UI
+                imageElement.src = newImageUrl; // Update the src
+                // Add onerror again in case the new one fails
+                imageElement.onerror = function() { this.onerror=null; this.src='https://via.placeholder.com/300x200.png?text=Regen+Fail'; };
+                imageElement.style.opacity = '1';
+                console.log(`New image URL attempt: ${newImageUrl}`);
+
+                // Hide buttons and clear angle area after regen
+                imageContainer.querySelector('.image-actions').style.display = 'none';
+                imageContainer.classList.remove('selected-image');
+                if (angleGenArea) { // Hide angle area if it was open
+                    angleGenArea.style.display = 'none';
+                    generatedAnglesContainer.innerHTML = '';
+                }
+            }
+
+            // --- 8. Handle "Generate Angles" Button ---
+            if (target.classList.contains('submit-angles-btn')) {
+                console.log(`Generating angles for image index ${imageIndex}, prompt ${promptId}`);
+                angleGenArea.style.display = 'block';
+                angleLoadingIndicator.style.display = 'block';
+                generatedAnglesContainer.innerHTML = ''; // Clear old angles
+
+                const baseImageUrl = imageElement.src;
+                console.log(`Generating 5 angles based on image: ${baseImageUrl}`);
+                await new Promise(resolve => setTimeout(resolve, 3000));
+
+                // SIMULATE: Generate angle URLs based on the base image
+                // const baseName = baseImageUrl.substring(baseImageUrl.lastIndexOf('/') + 1).split('.')[0].replace(/-\d$/, ''); // e.g., sample1
+                const baseName = "sample1"
+                const angleImageUrls = [
+                    `${baseName}-3.png`, // Replace with actual URLs/placeholders
+                    `${baseName}-2.png`,
+                    `${baseName}-3.png`,
+                    `${baseName}-4.png`,
+                    `${baseName}-2.png`
+                ];
+                 // Use placeholders if actual images aren't available
+                // const angleImageUrls = Array(5).fill('https://via.placeholder.com/300x200.png?text=Angle');
+
+                angleLoadingIndicator.style.display = 'none';
+                renderGeneratedAngles(generatedAnglesContainer, angleImageUrls, promptId, imageIndex);
+            }
+        });
+
+
+        // --- Render the 5 Generated Angle Images ---
+        function renderGeneratedAngles(container, urls, promptId, baseImageIndex) {
+            container.innerHTML = '';
+            urls.forEach((url, angleIdx) => {
+                const angleDiv = document.createElement('div');
+                angleDiv.classList.add('image-container', 'angle-image'); // Add 'angle-image' class
+                angleDiv.dataset.promptId = promptId;
+                angleDiv.dataset.baseImageIndex = baseImageIndex;
+                angleDiv.dataset.angleIndex = angleIdx;
+                angleDiv.dataset.imageUrl = url; // Store URL for download
+
+                // --- MODIFICATION 2: Add Download Button Structure ---
+                angleDiv.innerHTML = `
+                    <img src="${url}" alt="Angle ${angleIdx + 1} for Image ${parseInt(baseImageIndex) + 1} (Prompt ${promptId})" style="cursor: pointer;" onerror="this.onerror=null;this.src='https://via.placeholder.com/300x200.png?text=Angle+${angleIdx + 1}+NF';">
+                    <div class="angle-actions" style="display: none;"> <!-- Hidden by default -->
+                        <button class="btn btn-secondary download-angle-btn">Download</button>
+                    </div>
+                    `;
+                container.appendChild(angleDiv);
+            });
+        }
+
+
+        // --- MODIFICATION 2: Handle Clicking on one of the 5 Angle Images (Show Download) ---
+        promptList.addEventListener('click', (event) => {
+            const angleImageElement = event.target;
+            // Ensure click is directly on the IMG tag within an angle-image container
+            if (angleImageElement.tagName !== 'IMG' || !angleImageElement.closest('.angle-image')) {
+                return;
+            }
+
+            const angleContainer = angleImageElement.closest('.image-container.angle-image');
+            if (!angleContainer) return;
+
+            const angleActions = angleContainer.querySelector('.angle-actions');
+            if (!angleActions) return; // Should exist
+
+            const wasSelected = angleContainer.classList.contains('selected-image');
+
+            // Hide other angle download buttons within the SAME angle set
+            const allAngleContainersInSet = angleContainer.parentElement.querySelectorAll('.angle-image');
+            allAngleContainersInSet.forEach(sibling => {
+                if (sibling !== angleContainer) {
+                    sibling.classList.remove('selected-image');
+                    const siblingActions = sibling.querySelector('.angle-actions');
+                    if (siblingActions) siblingActions.style.display = 'none';
+                }
+            });
+
+            // Toggle display of the download button for the clicked angle image
+             if (wasSelected) {
+                 angleContainer.classList.remove('selected-image');
+                 angleActions.style.display = 'none';
+             } else {
+                 angleContainer.classList.add('selected-image');
+                 angleActions.style.display = 'block';
+             }
+        });
+
+
+        // --- MODIFICATION 2: Handle Download Button Click ---
+        promptList.addEventListener('click', (event) => {
+            const downloadButton = event.target;
+            if (!downloadButton.classList.contains('download-angle-btn')) {
+                return; // Didn't click the download button
+            }
+
+            event.stopPropagation(); // Prevent click bubbling up further
+
+            const angleContainer = downloadButton.closest('.angle-image');
+            if (!angleContainer) return;
+
+            const imageUrl = angleContainer.dataset.imageUrl;
+            const promptId = angleContainer.dataset.promptId;
+            const baseImageIndex = angleContainer.dataset.baseImageIndex;
+            const angleIndex = angleContainer.dataset.angleIndex;
+            const filename = `${promptId}_img${parseInt(baseImageIndex) + 1}_angle${parseInt(angleIndex) + 1}.png`; // Adjust extension if needed
+
+            console.log(`Attempting download: ${filename} from ${imageUrl}`);
+
+            // Create temporary link element
+            const link = document.createElement('a');
+
+            // IMPORTANT: For cross-origin images, direct download might be blocked by CORS.
+            // If the images are same-origin or CORS headers allow it, this works.
+            // Otherwise, you'd need a server-side proxy or use fetch + blob (which also requires CORS).
+            link.href = imageUrl;
+            link.download = filename;
+
+            // Simulate click to trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Optional: Hide button again after clicking download
+            // downloadButton.parentElement.style.display = 'none';
+            // angleContainer.classList.remove('selected-image');
+        });
+
+    }); // End DOMContentLoaded
+    </script>
+
+</body>
+</html>
